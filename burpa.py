@@ -25,19 +25,16 @@ __author__ = 'Adel "0x4d31" Karimi'
 __version__ = '0.1'
 
 ASCII = r"""
-########################################################
-    __                                                  
-   / /_  __  ___________                                
-  / __ \/ / / / ___/ __ \                               
- / /_/ / /_/ / /  / /_/ /                               
-/_.___/\__,_/_/  / .___/                                
-    ___         ///                       __            
-   /   | __  __/ /_____  ____ ___  ____ _/ /_____  _____
-  / /| |/ / / / __/ __ \/ __ `__ \/ __ `/ __/ __ \/ ___/
- / ___ / /_/ / /_/ /_/ / / / / / / /_/ / /_/ /_/ / /    
-/_/  |_\__,_/\__/\____/_/ /_/ /_/\__,_/\__/\____/_/     
-                                                        
-########################################################
+###################################################
+            __                          
+           / /_  __  ___________  ____ _
+          / __ \/ / / / ___/ __ \/ __ `/
+         / /_/ / /_/ / /  / /_/ / /_/ / 
+        /_.___/\__,_/_/  / .___/\__,_/  
+                        /_/             
+         burpa version 0.1 / by 0x4D31  
+
+###################################################
 """
 PROXY_URL = None
 PROXY_PORT = None
@@ -111,12 +108,13 @@ def proxy_history():
         sys.exit(1)
     resp = json.loads(r.text)
     if resp['messages']:
-        # Unique list of hosts
-        host_set = {i['host'] for i in resp['messages']}
-        print "[-] Found {} unique hosts in proxy history".format(
-            len(host_set)
+        # Unique list of URLs
+        url_set = {"{}://{}".format(i['protocol'], i['host'])
+                   for i in resp['messages']}
+        print "[-] Found {} unique targets in proxy history".format(
+            len(url_set)
         )
-        return list(host_set)
+        return list(url_set)
     else:
         print "[-] Proxy history is empty"
         return None
@@ -165,7 +163,7 @@ def is_inScope(host):
         r.raise_for_status()
         resp = json.loads(r.text)
         if resp['inScope']:
-            print "[-] {} is in the scope".format(host)
+            # print "[-] {} is in the scope".format(host)
             return True
         else:
             return False
@@ -199,16 +197,93 @@ def scan_status():
         )
         r.raise_for_status()
         resp = json.loads(r.text)
-        print "[-] Scan is {}% done".format(resp['scanPercentage'])
+        print "[-] Scan in progress: %{}".format(resp['scanPercentage'])
         return resp['scanPercentage']
     except requests.exceptions.RequestException as e:
         print("Error getting the scan status: {}".format(e))
 
 
+def scan_issues(url_prefix):
+    """
+    Returns all of the current scan issues for URLs
+    matching the specified urlPrefix
+    """
+    try:
+        if url_prefix == "ALL":
+            r = requests.get(
+                "{}:{}/burp/scanner/issues".format(
+                    PROXY_URL,
+                    API_PORT,
+                )
+            )
+        else:
+            r = requests.get(
+                "{}:{}/burp/scanner/issues?urlPrefix={}".format(
+                    PROXY_URL,
+                    API_PORT,
+                    url_prefix
+                )
+            )
+        r.raise_for_status()
+        resp = json.loads(r.text)
+        if resp['issues']:
+            print "[+] Scan issues for {}:".format(url_prefix)
+            uniques_issues = {"Issue: {}, Severity: {}".format(
+                i['issueName'],
+                i['severity']
+            ) for i in resp['issues']}
+            for issue in uniques_issues:
+                print "  - {}".format(issue)
+            return True
+        else:
+            return False
+    except requests.exceptions.RequestException as e:
+        print("Error getting the scan issues: {}".format(e))
+
+
+def scan_report(url_prefix, rtype):
+    """
+    Downloads the scan report with current Scanner issues for
+    URLs matching the specified urlPrefix (HTML/XML)
+    """
+    try:
+        if url_prefix == "ALL":
+            r = requests.get(
+                "{}:{}/burp/report?reportType={}".format(
+                    PROXY_URL,
+                    API_PORT,
+                    rtype
+                )
+            )
+        else:
+            r = requests.get(
+                "{}:{}/burp/report?urlPrefix={}&reportType={}".format(
+                    PROXY_URL,
+                    API_PORT,
+                    url_prefix,
+                    rtype
+                )
+            )
+        r.raise_for_status()
+        print "[+] Downloading HTML/XML report for {}".format(url_prefix)
+        # Write the response body (byte array) to file
+        # TODO: randomise the file name
+        file_path = "/tmp/burp_report-{}.html".format(
+            url_prefix.replace("://", "-")
+        )
+        f = open(file_path, 'wb')
+        f.write(r.text)
+        f.close()
+        print "[-] Scan report saved to {}".format(file_path)
+    except requests.exceptions.RequestException as e:
+        print("Error downloading the scan report: {}".format(e))
+
+
 def main():
     global PROXY_URL, PROXY_PORT, API_PORT, INCLUDE_SCOPE, EXCLUDE_SCOPE
+
     parser = argparse.ArgumentParser(
-        usage='burp-automator.py {proxy_url} [options]'
+        usage='burpa.py {proxy_url} [options]'
     )
     parser.add_argument(
         'proxy_url',
@@ -238,6 +313,21 @@ def main():
         # help="Burp REST API Port (default: 8090)"
     )
     parser.add_argument(
+        '-rT', '--report-type',
+        type=str,
+        default="HTML",
+        # metavar='',
+        # help="Burp scan report type (default: HTML)"
+    )
+    parser.add_argument(
+        '-r', '--report',
+        type=str,
+        default="in-scope",
+        choices=["in-scope", "all"],
+        # metavar='',
+        # help="Reports: all, in-scope (default: in-scope)"
+    )
+    parser.add_argument(
         '--include-scope',
         nargs='*'
         # metavar='',
@@ -250,11 +340,16 @@ def main():
         # help="Excluded from scope"
     )
     args = parser.parse_args()
+
     PROXY_URL = args.proxy_url
     PROXY_PORT = args.proxy_port
     API_PORT = args.api_port
     INCLUDE_SCOPE = args.include_scope
     EXCLUDE_SCOPE = args.exclude_scope
+    REPORT_TYPE = args.report_type
+    REPORT = args.report
+    scanned_urls = []
+
     if args.action == "proxy-config":
         if not config_check():
             config_update()
@@ -269,17 +364,25 @@ def main():
                 update_scope("exclude")
             print "[+] Active scan started ..."
             # Check the scope and start the scan
-            for t in targets:
-                target_url = "http://" + t
+            for target_url in targets:
                 if is_inScope(target_url):
+                    scanned_urls.append(target_url)
                     active_scan(target_url)
             # Get the scan status
-            while scan_status() != 100:
+            percentage = scan_status()
+            while percentage != 100:
                 time.sleep(30)
-                scan_status()
-            print "[+] Scan finished"
+                percentage = scan_status()
+            print "[+] Scan completed"
+            # Print/download the scan issues/reports
+            if REPORT == "in-scope":
+                for url in scanned_urls:
+                    if scan_issues(url):
+                        scan_report(url, REPORT_TYPE)
+            elif REPORT == "all":
+                if scan_issues("ALL"):
+                    scan_report("ALL", REPORT_TYPE)
 
-            # TODO: Generate Report
             # TODO: Slack Integration
             # TODO: JIRA Integration
 
