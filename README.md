@@ -5,7 +5,9 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 A Burp Suite Automation Tool
-![security-automation](https://github.com/0x4D31/burpa/blob/master/docs/diagram.png)
+
+<img align="center" src="https://github.com/0x4D31/burpa/blob/master/docs/diagram.png" width="650px">
+
 ## Requirements
 * [burp-rest-api](https://github.com/vmware/burp-rest-api)
 * Burp Suite Professional
@@ -49,7 +51,7 @@ optional arguments:
 ### TEST:
 
 ```
-$ python burpa.py http://127.0.0.1 -action proxy-config
+$ python burpa.py http://127.0.0.1 --action proxy-config
 
 ###################################################
             __                          
