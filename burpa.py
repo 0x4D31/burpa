@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from slackclient import SlackClient
 import requests
 import json
 import sys
@@ -23,6 +24,15 @@ import time
 
 __author__ = 'Adel "0x4d31" Karimi'
 __version__ = '0.1'
+
+# ################[ configuration ]################
+# Report File Path
+REPORT_PATH = "/tmp/"
+# Slack Report
+SLACK_REPORT = True
+SLACK_API_TOKEN = "xoxp-24EXAMPLE"
+SLACK_CHANNEL = "#burpa"
+###################################################
 
 ASCII = r"""
 ###################################################
@@ -48,7 +58,7 @@ def config_check():
     Check the Burp proxy configuration to make sure it's running
     and listening on all interfaces
     """
-    print "[+] Checking the Burp proxy configuration ..."
+    print("[+] Checking the Burp proxy configuration ...")
     try:
         r = requests.get(
             "{}:{}/burp/configuration".format(PROXY_URL, API_PORT)
@@ -61,16 +71,16 @@ def config_check():
     running = config['proxy']['request_listeners'][0]['running']
     listen_mode = config['proxy']['request_listeners'][0]['listen_mode']
     if running and listen_mode == "all_interfaces":
-        print "[-] Proxy configuration is OK"
+        print("[-] Proxy configuration is OK")
         return True
     else:
-        print "[-] Proxy configuration needs to be updated"
+        print("[-] Proxy configuration needs to be updated")
         return False
 
 
 def config_update():
     """Update the Burp proxy configuration"""
-    print "[+] Updating the Burp proxy configuration ..."
+    print("[+] Updating the Burp proxy configuration ...")
     PROXY_CONF = {
         "proxy": {
             "request_listeners": [{
@@ -85,10 +95,10 @@ def config_update():
     try:
         r = requests.put(
             "{}:{}/burp/configuration".format(PROXY_URL, API_PORT),
-            json=PROXY_CONF
+            data=json.dumps(PROXY_CONF)
         )
         r.raise_for_status()
-        print "[-] Proxy configuration updated"
+        print("[-] Proxy configuration updated")
     except requests.exceptions.RequestException as e:
         print("Error updating the Burp configuration: {}".format(e))
         sys.exit(1)
@@ -97,7 +107,7 @@ def config_update():
 
 def proxy_history():
     """Retrieve the Burp proxy history"""
-    print "[+] Retrieving the Burp proxy history ..."
+    print("[+] Retrieving the Burp proxy history ...")
     try:
         r = requests.get(
             "{}:{}/burp/proxy/history".format(PROXY_URL, API_PORT)
@@ -109,14 +119,14 @@ def proxy_history():
     resp = json.loads(r.text)
     if resp['messages']:
         # Unique list of URLs
-        url_set = {"{}://{}".format(i['protocol'], i['host'])
-                   for i in resp['messages']}
-        print "[-] Found {} unique targets in proxy history".format(
-            len(url_set)
-        )
-        return list(url_set)
+        host_set = {"{}://{}".format(i['protocol'], i['host'])
+                    for i in resp['messages']}
+        print("[-] Found {} unique targets in proxy history".format(
+            len(host_set)
+        ))
+        return list(host_set)
     else:
-        print "[-] Proxy history is empty"
+        print("[-] Proxy history is empty")
         return None
 
 
@@ -133,7 +143,7 @@ def update_scope(action):
                     )
                 )
                 r.raise_for_status()
-                print "[-] {} included in scope".format(i)
+                print("[-] {} included in scope".format(i))
             except requests.exceptions.RequestException as e:
                 print("Error updating the target scope: {}".format(e))
                 sys.exit(1)
@@ -148,7 +158,7 @@ def update_scope(action):
                     )
                 )
                 r.raise_for_status()
-                print "[-] {} excluded from scope".format(i)
+                print("[-] {} excluded from scope".format(i))
             except requests.exceptions.RequestException as e:
                 print("Error updating the target scope: {}".format(e))
                 sys.exit(1)
@@ -163,7 +173,7 @@ def is_inScope(host):
         r.raise_for_status()
         resp = json.loads(r.text)
         if resp['inScope']:
-            # print "[-] {} is in the scope".format(host)
+            # print("[-] {} is in the scope".format(host))
             return True
         else:
             return False
@@ -183,7 +193,7 @@ def active_scan(baseUrl):
             )
         )
         r.raise_for_status()
-        print "[-] {} Added to the scan queue".format(baseUrl)
+        print("[-] {} Added to the scan queue".format(baseUrl))
     except requests.exceptions.RequestException as e:
         print("Error adding {} to the scan queue: {}".format(baseUrl, e))
         sys.exit(1)
@@ -197,7 +207,10 @@ def scan_status():
         )
         r.raise_for_status()
         resp = json.loads(r.text)
-        print "[-] Scan in progress: %{}".format(resp['scanPercentage'])
+        sys.stdout.write("\r" + "[-] Scan in progress: %{}".format(
+            resp['scanPercentage'])
+        )
+        sys.stdout.flush()
         return resp['scanPercentage']
     except requests.exceptions.RequestException as e:
         print("Error getting the scan status: {}".format(e))
@@ -227,13 +240,13 @@ def scan_issues(url_prefix):
         r.raise_for_status()
         resp = json.loads(r.text)
         if resp['issues']:
-            print "[+] Scan issues for {}:".format(url_prefix)
+            print("[+] Scan issues for {}:".format(url_prefix))
             uniques_issues = {"Issue: {}, Severity: {}".format(
                 i['issueName'],
                 i['severity']
             ) for i in resp['issues']}
             for issue in uniques_issues:
-                print "  - {}".format(issue)
+                print("  - {}".format(issue))
             return True
         else:
             return False
@@ -265,26 +278,41 @@ def scan_report(url_prefix, rtype):
                 )
             )
         r.raise_for_status()
-        print "[+] Downloading HTML/XML report for {}".format(url_prefix)
-        # Write the response body (byte array) to file
-        # TODO: randomise the file name
-        file_path = "/tmp/burp_report-{}.html".format(
-            url_prefix.replace("://", "-")
-        )
-        f = open(file_path, 'wb')
-        f.write(r.text)
-        f.close()
-        print "[-] Scan report saved to {}".format(file_path)
     except requests.exceptions.RequestException as e:
         print("Error downloading the scan report: {}".format(e))
+
+    print("[+] Downloading HTML/XML report for {}".format(url_prefix))
+    # Write the response body (byte array) to file
+    file_name = "burp-report_{}_{}.{}".format(
+        time.strftime("%Y%m%d-%H%M%S", time.localtime()),
+        url_prefix.replace("://", "-"),
+        rtype.lower()
+    )
+    file = ("{}{}").format(REPORT_PATH, file_name)
+    with open(file, 'wb') as f:
+        f.write(r.text)
+    print("[-] Scan report saved to {}".format(file))
+    return file_name
+
+
+def slack_report(fname):
+    file = ("{}{}").format(REPORT_PATH, fname)
+    sc = SlackClient(SLACK_API_TOKEN)
+    response = sc.api_call(
+        'files.upload',
+        channels=SLACK_CHANNEL,
+        filename=fname,
+        file=open(file, 'rb'),
+        title="Burp Scan Report"
+    )
+    if response['ok']:
+        print("[+] Burp scan report uploaded to Slack")
 
 
 def main():
     global PROXY_URL, PROXY_PORT, API_PORT, INCLUDE_SCOPE, EXCLUDE_SCOPE
 
-    parser = argparse.ArgumentParser(
-        usage='burpa.py {proxy_url} [options]'
-    )
+    parser = argparse.ArgumentParser()
     parser.add_argument(
         'proxy_url',
         type=str,
@@ -316,6 +344,7 @@ def main():
         '-rT', '--report-type',
         type=str,
         default="HTML",
+        choices=["HTML", "XML"]
         # metavar='',
         # help="Burp scan report type (default: HTML)"
     )
@@ -355,36 +384,35 @@ def main():
             config_update()
     elif args.action == "scan":
         targets = proxy_history()
-        # Update the scope (include/exclude)
         if targets:
-            print "[+] Updating the scope ..."
+            # Update the scope (include/exclude)
+            print("[+] Updating the scope ...")
             if INCLUDE_SCOPE:
                 update_scope("include")
             if EXCLUDE_SCOPE:
                 update_scope("exclude")
-            print "[+] Active scan started ..."
+            print("[+] Active scan started ...")
             # Check the scope and start the scan
             for target_url in targets:
                 if is_inScope(target_url):
                     scanned_urls.append(target_url)
                     active_scan(target_url)
             # Get the scan status
-            percentage = scan_status()
-            while percentage != 100:
-                time.sleep(30)
-                percentage = scan_status()
-            print "[+] Scan completed"
+            while scan_status() != 100:
+                time.sleep(20)
+            print("\n[+] Scan completed")
             # Print/download the scan issues/reports
             if REPORT == "in-scope":
                 for url in scanned_urls:
                     if scan_issues(url):
-                        scan_report(url, REPORT_TYPE)
+                        rfile = scan_report(url, REPORT_TYPE)
+                        if SLACK_REPORT:
+                            slack_report(rfile)
             elif REPORT == "all":
                 if scan_issues("ALL"):
-                    scan_report("ALL", REPORT_TYPE)
-
-            # TODO: Slack Integration
-            # TODO: JIRA Integration
+                    rfile = scan_report("ALL", REPORT_TYPE)
+                    if SLACK_REPORT:
+                            slack_report(rfile)
 
 
 if __name__ == '__main__':
