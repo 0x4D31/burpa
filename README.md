@@ -1,8 +1,6 @@
 # burpa: Burp Automator
 A Burp Suite Automation Tool
-
 ![security-automation](https://github.com/0x4D31/burpa/blob/master/docs/security-automation.png)
-
 ## Requirements
 * [burp-rest-api](https://github.com/vmware/burp-rest-api)
 * Burp Suite Professional
