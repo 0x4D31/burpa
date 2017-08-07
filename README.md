@@ -1,6 +1,11 @@
+<img align="left" src="https://github.com/0x4D31/burpa/blob/master/docs/burpa.png" width="90px">
+
 # burpa: Burp Automator
+
+[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 A Burp Suite Automation Tool
-![security-automation](https://github.com/0x4D31/burpa/blob/master/docs/security-automation.png)
+![security-automation](https://github.com/0x4D31/burpa/blob/master/docs/diagram.png)
 ## Requirements
 * [burp-rest-api](https://github.com/vmware/burp-rest-api)
 * Burp Suite Professional
