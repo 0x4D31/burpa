@@ -44,7 +44,7 @@ optional arguments:
 ### TEST:
 
 ```
-$ python burp-automator.py http://127.0.0.1 -action proxy-config
+$ python burpa.py http://127.0.0.1 -action proxy-config
 
 ###################################################
             __                          
