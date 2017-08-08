@@ -124,10 +124,10 @@ def proxy_history(*, api_port, proxy_url):
             print("[-] Proxy history is empty")
 
 
-def update_scope(*, action, api_port, exclude_scope, include_scope, proxy_url):
+def update_scope(*, action, api_port, proxy_url, scope):
     """Include in scope / Exclude from scope"""
     if action == "include":
-        for i in include_scope:
+        for i in scope:
             try:
                 r = requests.put(
                     "{}:{}/burp/target/scope?url={}".format(
@@ -142,7 +142,7 @@ def update_scope(*, action, api_port, exclude_scope, include_scope, proxy_url):
                 print("Error updating the target scope: {}".format(e))
                 sys.exit(1)
     elif action == "exclude":
-        for i in exclude_scope:
+        for i in scope:
             try:
                 r = requests.delete(
                     "{}:{}/burp/target/scope?url={}".format(
@@ -390,16 +390,14 @@ def main():
                 update_scope(
                     action='include',
                     api_port=args.api_port,
-                    exclude_scope=None,
-                    include_scope=args.include_scope,
+                    scope=args.include_scope,
                     proxy_url=args.proxy_url
                 )
             if args.exclude_scope:
                 update_scope(
                     action='exclude',
                     api_port=args.api_port,
-                    exclude_scope=args.exclude_scope,
-                    include_scope=None,
+                    scope=args.exclude_scope,
                     proxy_url=args.proxy_url
                 )
             print("[+] Active scan started ...")
