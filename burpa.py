@@ -29,7 +29,7 @@ __version__ = '0.1'
 
 # ################[ configuration ]################
 # Slack Report
-SLACK_REPORT = True
+SLACK_REPORT = False
 SLACK_API_TOKEN = "xoxp-24EXAMPLE"
 SLACK_CHANNEL = "#burpa"
 ###################################################
@@ -52,6 +52,11 @@ def config_check(api_port, proxy_url):
     Check the Burp proxy configuration to make sure it's running
     and listening on all interfaces
     """
+    # Because of an issue in burp-rest-api
+    # (https://github.com/vmware/burp-rest-api/issues/17),
+    # we can't load our config when running the Burp (the default
+    # config getting set). So we need to set the proxy listen_mode
+    # using the API
     print("[+] Checking the Burp proxy configuration ...")
     try:
         r = requests.get(
@@ -306,6 +311,31 @@ def slack_report(fname):
         print("[+] Burp scan report uploaded to Slack")
 
 
+def burp_stop(api_port, proxy_url):
+    """Stop the Burp Suite"""
+    # Because of an issue in burp-rest-api
+    # (https://github.com/vmware/burp-rest-api/issues/15),
+    # we can't Reset/Restore the Burp State, so we need to stop
+    # the Burp after the scan to reset the state.
+    # e.g. You can use a supervisord configuration to restart the
+    # Burp when it stopped running:
+    #   [program:burp-rest-api]
+    #   command=java -jar /opt/burp-rest-api/build/libs/burp-rest-api-1.0.0.jar
+    #   directory=/opt/burp-rest-api/build/libs
+    #   redirect_stderr=true
+    #   stdout_logfile=/var/log/burp-rest-api.log
+    #   autorestart=true
+    #   user=burpa
+    try:
+        r = requests.get(
+            "{}:{}/burp/stop".format(proxy_url, api_port)
+        )
+	r.raise_for_status()
+        print("[-] Burp is stopped")
+    except requests.exceptions.RequestException as e:
+        print("Error stopping the burp: {}".format(e))
+
+
 def parse_cmd_line_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -317,9 +347,9 @@ def parse_cmd_line_args():
         '-a', '--action',
         type=str,
         default="scan",
-        choices=["scan", "proxy-config"],
+        choices=["scan", "proxy-config", "stop"],
         # metavar='',
-        # help="Actions: scan, proxy-config (default: scan)"
+        # help="Actions: scan, proxy-config, stop (default: scan)"
     )
     parser.add_argument(
         '-pP', '--proxy-port',
@@ -378,6 +408,10 @@ def main():
                 proxy_port=args.proxy_port,
                 proxy_url=args.proxy_url
             )
+    elif args.action == "stop":
+        print("[+] Shutting down the Burp Suite ...")
+        burp_stop(api_port=args.api_port,
+                  proxy_url=args.proxy_url)
     elif args.action == "scan":
         targets = proxy_history(
             api_port=args.api_port,
@@ -412,6 +446,8 @@ def main():
                         base_url=target_url,
                         proxy_url=args.proxy_url
                     )
+                else:
+                    print("[-] {} is not in the scope".format(target_url))
             # Get the scan status
             while scan_status(api_port=args.api_port,
                               proxy_url=args.proxy_url) != 100:
