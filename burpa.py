@@ -47,7 +47,7 @@ ASCII = r"""
 ###################################################"""
 
 
-def config_check(*, api_port, proxy_url):
+def config_check(api_port, proxy_url):
     """
     Check the Burp proxy configuration to make sure it's running
     and listening on all interfaces
@@ -73,7 +73,7 @@ def config_check(*, api_port, proxy_url):
             return False
 
 
-def config_update(*, api_port, proxy_port, proxy_url):
+def config_update(api_port, proxy_port, proxy_url):
     """Update the Burp proxy configuration"""
     print("[+] Updating the Burp proxy configuration ...")
     proxy_conf = {
@@ -99,7 +99,7 @@ def config_update(*, api_port, proxy_port, proxy_url):
         sys.exit(1)
 
 
-def proxy_history(*, api_port, proxy_url):
+def proxy_history(api_port, proxy_url):
     """Retrieve the Burp proxy history"""
     print("[+] Retrieving the Burp proxy history ...")
     try:
@@ -124,7 +124,7 @@ def proxy_history(*, api_port, proxy_url):
             print("[-] Proxy history is empty")
 
 
-def update_scope(*, action, api_port, proxy_url, scope):
+def update_scope(action, api_port, proxy_url, scope):
     """Include in scope / Exclude from scope"""
     if action == "include":
         for i in scope:
@@ -158,7 +158,7 @@ def update_scope(*, action, api_port, proxy_url, scope):
                 sys.exit(1)
 
 
-def is_in_scope(*, api_port, host, proxy_url):
+def is_in_scope(api_port, host, proxy_url):
     """Query whether a URL is within the current scope"""
     try:
         r = requests.get(
@@ -177,7 +177,7 @@ def is_in_scope(*, api_port, host, proxy_url):
             return False
 
 
-def active_scan(*, api_port, base_url, proxy_url):
+def active_scan(api_port, base_url, proxy_url):
     """Send a URL to Burp to perform active scan"""
     try:
         r = requests.post(
@@ -194,7 +194,7 @@ def active_scan(*, api_port, base_url, proxy_url):
         sys.exit(1)
 
 
-def scan_status(*, api_port, proxy_url):
+def scan_status(api_port, proxy_url):
     """Get the percentage completed for the scan queue items"""
     try:
         r = requests.get(
@@ -212,7 +212,7 @@ def scan_status(*, api_port, proxy_url):
         return resp['scanPercentage']
 
 
-def scan_issues(*, api_port, proxy_url, url_prefix):
+def scan_issues(api_port, proxy_url, url_prefix):
     """
     Returns all of the current scan issues for URLs
     matching the specified urlPrefix
@@ -251,7 +251,7 @@ def scan_issues(*, api_port, proxy_url, url_prefix):
             return False
 
 
-def scan_report(*, api_port, proxy_url, rtype, url_prefix):
+def scan_report(api_port, proxy_url, rtype, url_prefix):
     """
     Downloads the scan report with current Scanner issues for
     URLs matching the specified urlPrefix (HTML/XML)
@@ -292,7 +292,7 @@ def scan_report(*, api_port, proxy_url, rtype, url_prefix):
         return file_name
 
 
-def slack_report(*, fname):
+def slack_report(fname):
     file = os.path.join(tempfile.gettempdir(), fname)
     sc = SlackClient(SLACK_API_TOKEN)
     response = sc.api_call(
