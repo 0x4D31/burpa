@@ -30,7 +30,7 @@ __version__ = '0.1'
 # ################[ configuration ]################
 # Slack Report
 SLACK_REPORT = False
-SLACK_API_TOKEN = "xoxp-24EXAMPLE"
+SLACK_API_TOKEN = ""
 SLACK_CHANNEL = "#burpa"
 ###################################################
 
@@ -297,9 +297,9 @@ def scan_report(api_port, proxy_url, rtype, url_prefix):
         return file_name
 
 
-def slack_report(fname):
+def slack_report(api_token, fname):
     file = os.path.join(tempfile.gettempdir(), fname)
-    sc = SlackClient(SLACK_API_TOKEN)
+    sc = SlackClient(api_token)
     response = sc.api_call(
         'files.upload',
         channels=SLACK_CHANNEL,
@@ -309,6 +309,8 @@ def slack_report(fname):
     )
     if response['ok']:
         print("[+] Burp scan report uploaded to Slack")
+    else:
+        print("[+] Error sending Slack report: {}".format(response['error']))
 
 
 def burp_stop(api_port, proxy_url):
@@ -380,6 +382,18 @@ def parse_cmd_line_args():
         choices=["in-scope", "all"],
         # metavar='',
         # help="Reports: all, in-scope (default: in-scope)"
+    )
+    parser.add_argument(
+        '-sR', '--slack-report',
+        action='store_true'
+    )
+    parser.set_defaults(slack_report=SLACK_REPORT)
+    parser.add_argument(
+        '-sAT', '--slack-api-token',
+        type=str,
+        default=SLACK_API_TOKEN
+        # metavar='',
+        # help="Slack API Token (default: in-scope)"
     )
     parser.add_argument(
         '--include-scope',
@@ -465,8 +479,9 @@ def main():
                             rtype=args.report_type,
                             url_prefix=url
                         )
-                        if SLACK_REPORT:
-                            slack_report(fname=rfile)
+                        if args.slack_report:
+                            slack_report(api_token=args.slack_api_token,
+                                         fname=rfile)
             elif args.report == "all":
                 if scan_issues(api_port=args.api_port,
                                proxy_url=args.proxy_url,
@@ -477,8 +492,9 @@ def main():
                         rtype=args.report_type,
                         url_prefix="ALL"
                     )
-                    if SLACK_REPORT:
-                        slack_report(fname=rfile)
+                    if args.slack_report:
+                        slack_report(api_token=args.slack_api_token,
+                                     fname=rfile)
 
 
 if __name__ == '__main__':
