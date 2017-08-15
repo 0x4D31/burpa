@@ -28,8 +28,9 @@ $ python burpa.py -h
          burpa version 0.1 / by 0x4D31  
 
 ###################################################
-usage: burpa.py [-h] [-a {scan,proxy-config}] [-pP PROXY_PORT] [-aP API_PORT]
-                [-rT {HTML,XML}] [-r {in-scope,all}]
+usage: burpa.py [-h] [-a {scan,proxy-config,stop}] [-pP PROXY_PORT]
+                [-aP API_PORT] [-rT {HTML,XML}] [-r {in-scope,all}] [-sR]
+                [-sAT SLACK_API_TOKEN]
                 [--include-scope [INCLUDE_SCOPE [INCLUDE_SCOPE ...]]]
                 [--exclude-scope [EXCLUDE_SCOPE [EXCLUDE_SCOPE ...]]]
                 proxy_url
@@ -39,11 +40,13 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  -a {scan,proxy-config}, --action {scan,proxy-config}
+  -a {scan,proxy-config,stop}, --action {scan,proxy-config,stop}
   -pP PROXY_PORT, --proxy-port PROXY_PORT
   -aP API_PORT, --api-port API_PORT
   -rT {HTML,XML}, --report-type {HTML,XML}
   -r {in-scope,all}, --report {in-scope,all}
+  -sR, --slack-report
+  -sAT SLACK_API_TOKEN, --slack-api-token SLACK_API_TOKEN
   --include-scope [INCLUDE_SCOPE [INCLUDE_SCOPE ...]]
   --exclude-scope [EXCLUDE_SCOPE [EXCLUDE_SCOPE ...]]
 ```
@@ -68,7 +71,7 @@ $ python burpa.py http://127.0.0.1 --action proxy-config
 [+] Updating the Burp proxy configuration ...
 [-] Proxy configuration updated
 
-$ python burpa.py http://127.0.0.1 --action scan --include-scope http://testasp.vulnweb.com
+$ python burpa.py http://127.0.0.1 --action scan --include-scope http://testasp.vulnweb.com --report in-scope --slack-report
 
 ###################################################
             __                          
